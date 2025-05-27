@@ -1,0 +1,10 @@
+{
+    "name": "valhalla",
+    "version": "0.0.1",
+    "description": "Valhalla routing engine integration extension",
+    "repository": "https://github.com/fleetbase/valhalla",
+    "license": "AGPL-3.0-or-later",
+    "author": "Fleetbase Pte Ltd <hello@fleetbase.io>",
+    "engine": "package.json",
+    "api": "composer.json"
+}
