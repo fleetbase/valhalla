@@ -6,6 +6,7 @@ import services from '@fleetbase/ember-core/exports/services';
 
 const { modulePrefix } = config;
 const externalRoutes = ['console', 'extensions'];
+const FLEETOPS_ENGINE_NAME = '@fleetbase/fleetops-engine';
 
 export default class ValhallaEngine extends Engine {
     modulePrefix = modulePrefix;
@@ -14,9 +15,14 @@ export default class ValhallaEngine extends Engine {
         services,
         externalRoutes,
     };
+    engineDependencies = [FLEETOPS_ENGINE_NAME];
+    /* eslint no-unused-vars: "off" */
     setupExtension = function (app, engine, universe) {
-        // register menu item in header
-        universe.registerHeaderMenuItem('valhalla', 'console.valhalla', { icon: 'layer-group', priority: 5 });
+        const routeOptimization = app.lookup('service:route-optimization');
+        const valhalla = app.lookup('service:valhalla');
+        if (routeOptimization && valhalla) {
+            routeOptimization.register('valhalla', valhalla);
+        }
     };
 }
 
