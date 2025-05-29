@@ -1,7 +1,5 @@
 import RouteOptimizationInterfaceService from '@fleetbase/fleetops-engine/services/route-optimization-interface';
-import config from '@fleetbase/vroom-engine/config/environment';
 import { debug } from '@ember/debug';
-import { all } from 'rsvp';
 
 export default class ValhallaService extends RouteOptimizationInterfaceService {
     name = 'Valhalla';
@@ -15,7 +13,7 @@ export default class ValhallaService extends RouteOptimizationInterfaceService {
         const hasDriverStart = Boolean(driverPosition);
 
         try {
-            const result = await this.#request('optimized-route', { locations, costing: 'auto' });
+            const result = await this.#request('optimized-route', { locations, costing: 'auto' }, options);
 
             // Pair each Valhalla waypoint with its Waypoint model
             // Valhalla returns locations in the array sorted by optimization and a property `original_index`
