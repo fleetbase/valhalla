@@ -18,8 +18,8 @@ importers:
         specifier: latest
         version: 0.3.2(@ember/test-helpers@3.3.1(@babel/core@7.27.1)(ember-source@5.4.1(@babel/core@7.27.1)(@glimmer/component@1.1.2(@babel/core@7.27.1))(rsvp@4.8.5)(webpack@5.99.9))(webpack@5.99.9))(@glimmer/component@1.1.2(@babel/core@7.27.1))(@glimmer/tracking@1.1.2)(ember-resolver@11.0.1(ember-source@5.4.1(@babel/core@7.27.1)(@glimmer/component@1.1.2(@babel/core@7.27.1))(rsvp@4.8.5)(webpack@5.99.9)))(ember-source@5.4.1(@babel/core@7.27.1)(@glimmer/component@1.1.2(@babel/core@7.27.1))(rsvp@4.8.5)(webpack@5.99.9))(postcss@8.5.3)(rollup@2.79.2)(tracked-built-ins@3.4.0(@babel/core@7.27.1))(webpack@5.99.9)
       '@fleetbase/leaflet-routing-machine':
-        specifier: ^3.2.16
-        version: 3.2.16
+        specifier: ^3.2.17
+        version: 3.2.17
       '@fortawesome/ember-fontawesome':
         specifier: ^2.0.0
         version: 2.0.0(ember-source@5.4.1(@babel/core@7.27.1)(@glimmer/component@1.1.2(@babel/core@7.27.1))(rsvp@4.8.5)(webpack@5.99.9))(rollup@2.79.2)(webpack@5.99.9)
@@ -1243,8 +1243,8 @@ packages:
     resolution: {integrity: sha512-/efmMSA5k2dLI1Iq0xmjo1dMlAnuGEQVJAaaCCMhhhc4T7e5r2HlWXoHgZopTOM3y2R48O7cUxmkMQcxtaAvnA==}
     engines: {node: '>= 18'}
 
-  '@fleetbase/leaflet-routing-machine@3.2.16':
-    resolution: {integrity: sha512-af0mKH3VKIGEfYEGXS9cedhgniwgkNwjC/Gp9ZEzXGTX2/13PyMdd1XOQTamaItPbh5x2uK2/n1BP0vIJ7ObEQ==}
+  '@fleetbase/leaflet-routing-machine@3.2.17':
+    resolution: {integrity: sha512-2S/XLPzf25ZKV7cFJwfeu4voYQboF9JiDfpRUTrif4XCfgdrQ2Zim7O5iTpoNv2l8Ne8D+Ed7BGJsKWjJFLcsw==}
 
   '@floating-ui/core@1.7.0':
     resolution: {integrity: sha512-FRdBLykrPPA6P76GGGqlex/e7fbe0F1ykgxHYNXQsH/iTEtjMj/f9bpY5oQqbjt5VgZvgz/uKXbGuROijh3VLA==}
@@ -9772,7 +9772,7 @@ snapshots:
       - webpack-cli
       - webpack-command
 
-  '@fleetbase/leaflet-routing-machine@3.2.16':
+  '@fleetbase/leaflet-routing-machine@3.2.17':
     dependencies:
       '@mapbox/corslite': 0.0.7
       '@mapbox/polyline': 0.2.0
