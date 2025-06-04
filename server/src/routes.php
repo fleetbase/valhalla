@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix(config('valhalla.api.routing.prefix', 'starter'))->namespace('Fleetbase\Valhalla\Http\Controllers')->group(
+Route::prefix(config('valhalla.api.routing.prefix', 'valhalla'))->namespace('Fleetbase\Valhalla\Http\Controllers')->group(
     function ($router) {
         /*
         |--------------------------------------------------------------------------
@@ -27,7 +27,9 @@ Route::prefix(config('valhalla.api.routing.prefix', 'starter'))->namespace('Flee
                 $router->group(
                     ['prefix' => 'v1', 'middleware' => ['fleetbase.protected']],
                     function ($router) {
-                        // $router->fleetbaseRoutes('resource');
+                        $router->post('route', 'ValhallaController@route');
+                        $router->post('optimized-route', 'ValhallaController@optimizedRoute');
+                        $router->post('matrix', 'ValhallaController@matrix');
                     }
                 );
             }

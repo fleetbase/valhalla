@@ -17,6 +17,9 @@ importers:
       '@fleetbase/ember-ui':
         specifier: latest
         version: 0.3.2(@ember/test-helpers@3.3.1(@babel/core@7.27.1)(ember-source@5.4.1(@babel/core@7.27.1)(@glimmer/component@1.1.2(@babel/core@7.27.1))(rsvp@4.8.5)(webpack@5.99.9))(webpack@5.99.9))(@glimmer/component@1.1.2(@babel/core@7.27.1))(@glimmer/tracking@1.1.2)(ember-resolver@11.0.1(ember-source@5.4.1(@babel/core@7.27.1)(@glimmer/component@1.1.2(@babel/core@7.27.1))(rsvp@4.8.5)(webpack@5.99.9)))(ember-source@5.4.1(@babel/core@7.27.1)(@glimmer/component@1.1.2(@babel/core@7.27.1))(rsvp@4.8.5)(webpack@5.99.9))(postcss@8.5.3)(rollup@2.79.2)(tracked-built-ins@3.4.0(@babel/core@7.27.1))(webpack@5.99.9)
+      '@fleetbase/leaflet-routing-machine':
+        specifier: ^3.2.17
+        version: 3.2.17
       '@fortawesome/ember-fontawesome':
         specifier: ^2.0.0
         version: 2.0.0(ember-source@5.4.1(@babel/core@7.27.1)(@glimmer/component@1.1.2(@babel/core@7.27.1))(rsvp@4.8.5)(webpack@5.99.9))(rollup@2.79.2)(webpack@5.99.9)
@@ -1240,6 +1243,9 @@ packages:
     resolution: {integrity: sha512-/efmMSA5k2dLI1Iq0xmjo1dMlAnuGEQVJAaaCCMhhhc4T7e5r2HlWXoHgZopTOM3y2R48O7cUxmkMQcxtaAvnA==}
     engines: {node: '>= 18'}
 
+  '@fleetbase/leaflet-routing-machine@3.2.17':
+    resolution: {integrity: sha512-2S/XLPzf25ZKV7cFJwfeu4voYQboF9JiDfpRUTrif4XCfgdrQ2Zim7O5iTpoNv2l8Ne8D+Ed7BGJsKWjJFLcsw==}
+
   '@floating-ui/core@1.7.0':
     resolution: {integrity: sha512-FRdBLykrPPA6P76GGGqlex/e7fbe0F1ykgxHYNXQsH/iTEtjMj/f9bpY5oQqbjt5VgZvgz/uKXbGuROijh3VLA==}
 
@@ -1471,6 +1477,13 @@ packages:
   '@makepanic/ember-power-calendar-date-fns@0.4.2':
     resolution: {integrity: sha512-CaNTtpaypA69fCqFlz69SMSuuLY1TLcDxjXaPmBNj+SsZpqQXcFgkPVRQEna7IICdgDbJIoLQnB/AB7/J6AD9g==}
     engines: {node: '>= 10.*'}
+
+  '@mapbox/corslite@0.0.7':
+    resolution: {integrity: sha512-w/uS474VFjmqQ7fFWIMZINQM1BAQxDLuoJaZZIPES1BmeYpCtlh9MtbFxKGGDAsfvut8/HircIsVvEYRjQ+iMg==}
+
+  '@mapbox/polyline@0.2.0':
+    resolution: {integrity: sha512-GCddO0iw6AzOQqZgBmjEQI9Pgo40/yRgkTkikGctE01kNBN0ThWYuAnTD+hRWrAWMV6QJ0rNm4m8DAsaAXE7Pg==}
+    hasBin: true
 
   '@mrmlnc/readdir-enhanced@2.2.1':
     resolution: {integrity: sha512-bPHp6Ji8b41szTOcaP63VlnbbO5Ny6dwAATtY6JTjh5N2OLrb5Qk/Th5cRkRQhkWCt+EJsYrNB0MiL+Gpn6e3g==}
@@ -6129,6 +6142,9 @@ packages:
     resolution: {integrity: sha512-D2FR03Vir7FIu45XBY20mTb+/ZSWB00sjU9jdQXt83gDrI4Ztz5Fs7/yy74g2N5SVQY4xY1qDr4rNddwYRVX0g==}
     engines: {node: '>=0.10.0'}
 
+  osrm-text-instructions@0.13.4:
+    resolution: {integrity: sha512-ge4ZTIetMQKAHKq2MwWf83ntzdJN20ndRKRaVNoZ3SkDkBNO99Qddz7r6+hrVx38I+ih6Rk5T1yslczAB6Q9Pg==}
+
   own-keys@1.0.1:
     resolution: {integrity: sha512-qFOyK5PjiWZd+QQIh+1jhdb9LpxTF0qs7Pm8o5QHYZ0M3vKqSqzsZaEB6oWlxZ+q2sJBMI/Ktgd2N5ZwQoRHfg==}
     engines: {node: '>= 0.4'}
@@ -9756,6 +9772,12 @@ snapshots:
       - webpack-cli
       - webpack-command
 
+  '@fleetbase/leaflet-routing-machine@3.2.17':
+    dependencies:
+      '@mapbox/corslite': 0.0.7
+      '@mapbox/polyline': 0.2.0
+      osrm-text-instructions: 0.13.4
+
   '@floating-ui/core@1.7.0':
     dependencies:
       '@floating-ui/utils': 0.2.9
@@ -10146,6 +10168,10 @@ snapshots:
       - supports-color
       - webpack-cli
       - webpack-command
+
+  '@mapbox/corslite@0.0.7': {}
+
+  '@mapbox/polyline@0.2.0': {}
 
   '@mrmlnc/readdir-enhanced@2.2.1':
     dependencies:
@@ -16482,6 +16508,8 @@ snapshots:
       mem: 5.1.1
 
   os-tmpdir@1.0.2: {}
+
+  osrm-text-instructions@0.13.4: {}
 
   own-keys@1.0.1:
     dependencies:
