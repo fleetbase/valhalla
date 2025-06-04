@@ -29,7 +29,7 @@ export default class ValhallaService extends RouteOptimizationInterfaceService {
             // Extract the Ember models (null-safe)
             const sortedWaypoints = payloadPairs.map((p) => p.model).filter(Boolean);
 
-            return { sortedWaypoints, result };
+            return { sortedWaypoints, result, engine: 'valhalla' };
         } catch (err) {
             debug(`[Valhalla] Error optimizing route : ${err.message}`);
             throw err;

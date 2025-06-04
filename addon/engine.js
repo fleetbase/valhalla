@@ -3,7 +3,7 @@ import loadInitializers from 'ember-load-initializers';
 import Resolver from 'ember-resolver';
 import config from './config/environment';
 import services from '@fleetbase/ember-core/exports/services';
-import { RouterControl } from '@fleetbase/fleetops-engine/services/leaflet-router-control';
+import { RoutingControl } from '@fleetbase/fleetops-engine/services/leaflet-routing-control';
 
 const { modulePrefix } = config;
 const externalRoutes = ['console', 'extensions'];
@@ -27,11 +27,11 @@ export default class ValhallaEngine extends Engine {
         }
 
         // Register Valhalla Routing Control
-        const leafletRouterControl = app.lookup('service:leaflet-router-control');
-        if (leafletRouterControl) {
-            leafletRouterControl.register(
+        const leafletRoutingControl = app.lookup('service:leaflet-routing-control');
+        if (leafletRoutingControl) {
+            leafletRoutingControl.register(
                 'valhalla',
-                new RouterControl({
+                new RoutingControl({
                     name: 'Valhalla',
                     router: new L.Routing.Valhalla(),
                     formatter: new L.Routing.Valhalla.Formatter(),
