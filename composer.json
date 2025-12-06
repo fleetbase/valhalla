@@ -1,6 +1,6 @@
 {
     "name": "fleetbase/valhalla-api",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "Valhalla routing engine extension for Fleetbase",
     "keywords": [
         "fleetbase",
