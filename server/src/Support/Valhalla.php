@@ -15,8 +15,24 @@ class Valhalla
 
     public function __construct()
     {
-        $this->baseUri = config('valhalla.base_uri', 'https://valhalla1.openstreetmap.de');
+        $this->baseUri = config('valhalla.base_uri', env('VALHALLA_BASE_URI', 'https://valhalla1.openstreetmap.de'));
         $this->apiKey  = config('valhalla.api_key');
+    }
+
+    public function setBaseUri(?string $baseUri)
+    {
+        if ($baseUri) {
+            $this->baseUri = $baseUri;
+        }
+
+        return $this;
+    }
+
+    public function setApiKey(?string $apiKey)
+    {
+        $this->apiKey = $apiKey;
+
+        return $this;
     }
 
     /**
@@ -70,10 +86,13 @@ class Valhalla
     protected function post(string $endpoint, array $payload): array
     {
         $url = rtrim($this->baseUri, '/') . '/' . $endpoint;
+        $request = Http::timeout(30)->withHeaders(['Content-Type' => 'application/json']);
 
-        $response = Http::timeout(30)
-            ->withHeaders(['Content-Type' => 'application/json'])
-            ->post($url, $payload);
+        if ($this->apiKey) {
+            $request = $request->withQueryParameters(['api_key' => $this->apiKey]);
+        }
+
+        $response = $request->post($url, $payload);
 
         if (!$response->successful()) {
             throw new ValhallaException($endpoint, $response);

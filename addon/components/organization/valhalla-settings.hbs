@@ -1,0 +1,16 @@
+{{#if this.isActive}}
+    <ContentPanel @title="Configure Valhalla" @open={{true}} @wrapperClass="bordered-classic">
+        <InputGroup @name="Organization Override">
+            <Checkbox @value={{this.useOwnServer}} @label="Use my own Valhalla server" @onToggle={{fn (mut this.useOwnServer)}} @alignItems="center" @labelClass="mb-0i" />
+        </InputGroup>
+
+        {{#if this.useOwnServer}}
+            <InputGroup @name="Valhalla API Host" @helpText="Organization-specific Valhalla host override.">
+                <Input @value={{this.apiHost}} placeholder="https://your-valhalla-host.example.com" class="w-full form-input" />
+            </InputGroup>
+            <InputGroup @name="Valhalla API Key" @helpText="Optional organization-specific API key override.">
+                <Input @value={{this.apiKey}} placeholder="Enter organization Valhalla API key" class="w-full form-input" />
+            </InputGroup>
+        {{/if}}
+    </ContentPanel>
+{{/if}}

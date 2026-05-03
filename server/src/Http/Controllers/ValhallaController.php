@@ -4,6 +4,7 @@ namespace Fleetbase\Valhalla\Http\Controllers;
 
 use Fleetbase\Http\Controllers\Controller;
 use Fleetbase\Valhalla\Exceptions\ValhallaException;
+use Fleetbase\Valhalla\Support\Utils;
 use Fleetbase\Valhalla\Support\Valhalla;
 use Illuminate\Http\Request;
 
@@ -32,6 +33,7 @@ class ValhallaController extends Controller
     public function route(Request $request)
     {
         $payload = $request->all();
+        $this->applyRuntimeSettings();
 
         try {
             $data = $this->valhalla->route($payload);
@@ -61,6 +63,7 @@ class ValhallaController extends Controller
     public function optimizedRoute(Request $request)
     {
         $payload = $request->all();
+        $this->applyRuntimeSettings();
 
         try {
             $data = $this->valhalla->optimizedRoute($payload);
@@ -90,6 +93,7 @@ class ValhallaController extends Controller
     public function isochrone(Request $request)
     {
         $payload = $request->all();
+        $this->applyRuntimeSettings();
 
         try {
             $data = $this->valhalla->isochrone($payload);
@@ -119,6 +123,7 @@ class ValhallaController extends Controller
     public function matrix(Request $request)
     {
         $payload = $request->all();
+        $this->applyRuntimeSettings();
 
         try {
             $data = $this->valhalla->matrix($payload);
@@ -136,5 +141,58 @@ class ValhallaController extends Controller
                 config('app.debug') ? $e->getMessage() : 'Valhalla API request failed.'
             );
         }
+    }
+
+    public function getSettings()
+    {
+        $settings = Utils::getOrganizationSettings([
+            'api_host' => null,
+            'api_key'  => null,
+        ]);
+
+        return response()->json($settings);
+    }
+
+    public function getAdminSettings()
+    {
+        $settings = Utils::getSystemSettings([
+            'api_host' => config('valhalla.base_uri', env('VALHALLA_BASE_URI', 'https://valhalla1.openstreetmap.de')),
+            'api_key'  => config('valhalla.api_key', env('VALHALLA_API_KEY')),
+        ]);
+
+        return response()->json($settings);
+    }
+
+    public function saveSettings(Request $request)
+    {
+        \Fleetbase\Models\Setting::configureCompany('valhalla', [
+            'api_host' => $request->input('api_host'),
+            'api_key'  => $request->input('api_key'),
+        ]);
+
+        return response()->json([
+            'status'  => 'ok',
+            'message' => 'Valhalla settings succesfully saved.',
+        ]);
+    }
+
+    public function saveAdminSettings(Request $request)
+    {
+        \Fleetbase\Models\Setting::configure('valhalla', [
+            'api_host' => $request->input('api_host', config('valhalla.base_uri', env('VALHALLA_BASE_URI', 'https://valhalla1.openstreetmap.de'))),
+            'api_key'  => $request->input('api_key', config('valhalla.api_key', env('VALHALLA_API_KEY'))),
+        ]);
+
+        return response()->json([
+            'status'  => 'ok',
+            'message' => 'Valhalla settings succesfully saved.',
+        ]);
+    }
+
+    protected function applyRuntimeSettings(): void
+    {
+        $this->valhalla
+            ->setBaseUri(Utils::resolveBaseUri())
+            ->setApiKey(Utils::resolveApiKey());
     }
 }

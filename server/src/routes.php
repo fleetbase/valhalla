@@ -30,6 +30,10 @@ Route::prefix(config('valhalla.api.routing.prefix', 'valhalla'))->namespace('Fle
                         $router->post('route', 'ValhallaController@route');
                         $router->post('optimized-route', 'ValhallaController@optimizedRoute');
                         $router->post('matrix', 'ValhallaController@matrix');
+                        $router->post('settings', 'ValhallaController@saveSettings');
+                        $router->get('settings', 'ValhallaController@getSettings');
+                        $router->post('admin-settings', 'ValhallaController@saveAdminSettings');
+                        $router->get('admin-settings', 'ValhallaController@getAdminSettings');
                     }
                 );
             }

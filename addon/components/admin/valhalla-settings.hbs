@@ -1,0 +1,12 @@
+<ContentPanel @title="Configure Valhalla" @open={{true}} @wrapperClass="bordered-classic">
+    <InputGroup @name="Valhalla API Host" @helpText="Base URL for the default Valhalla routing service used across organizations.">
+        <Input @value={{this.apiHost}} placeholder="https://valhalla1.openstreetmap.de" class="w-full form-input" />
+    </InputGroup>
+    <InputGroup @name="Valhalla API Key" @helpText="Optional API key for the system-wide Valhalla service.">
+        <Input @value={{this.apiKey}} placeholder="Enter system Valhalla API key" class="w-full form-input" />
+    </InputGroup>
+
+    <div class="mt-4">
+        <Button @text="Save Valhalla Settings" @type="primary" @size="sm" @icon="save" @onClick={{perform this.saveValhallaSettings}} @isLoading={{this.saveValhallaSettings.isRunning}} />
+    </div>
+</ContentPanel>
