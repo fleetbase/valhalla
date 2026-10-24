@@ -20,13 +20,13 @@ class Utils extends FleetbaseUtils
     public static function resolveSetting(string $key, $defaultValue = null)
     {
         $organizationSettings = static::getOrganizationSettings();
-        $organizationValue = data_get($organizationSettings, $key);
+        $organizationValue    = data_get($organizationSettings, $key);
         if (static::hasConfiguredValue($organizationValue)) {
             return $organizationValue;
         }
 
         $systemSettings = static::getSystemSettings();
-        $systemValue = data_get($systemSettings, $key);
+        $systemValue    = data_get($systemSettings, $key);
         if (static::hasConfiguredValue($systemValue)) {
             return $systemValue;
         }
@@ -42,6 +42,37 @@ class Utils extends FleetbaseUtils
     public static function resolveApiKey(): ?string
     {
         return static::resolveSetting('api_key', config('valhalla.api_key', env('VALHALLA_API_KEY')));
+    }
+
+    /**
+     * Replace the stored API key with a `has_api_key` flag so responses never carry the key.
+     */
+    public static function withoutApiKey(array $settings): array
+    {
+        $settings['has_api_key'] = static::hasConfiguredValue(data_get($settings, 'api_key'));
+        unset($settings['api_key']);
+
+        return $settings;
+    }
+
+    /**
+     * The API key to store after a settings save.
+     *
+     * The console never receives the stored key, so an empty or missing `api_key` keeps the stored one.
+     * `clear_api_key` removes it.
+     */
+    public static function submittedApiKey(array $input, ?string $storedApiKey): ?string
+    {
+        if (filter_var(data_get($input, 'clear_api_key', false), FILTER_VALIDATE_BOOLEAN)) {
+            return null;
+        }
+
+        $submitted = data_get($input, 'api_key');
+        if (is_string($submitted) && trim($submitted) !== '') {
+            return trim($submitted);
+        }
+
+        return static::hasConfiguredValue($storedApiKey) ? $storedApiKey : null;
     }
 
     protected static function hasConfiguredValue($value): bool
