@@ -21,7 +21,7 @@ class Utils extends FleetbaseUtils
     {
         $organizationSettings = static::getOrganizationSettings();
         $organizationValue    = data_get($organizationSettings, $key);
-        if (static::hasConfiguredValue($organizationValue)) {
+        if (static::hasConfiguredValue($organizationValue) && static::organizationOverrideAllowed($organizationSettings)) {
             return $organizationValue;
         }
 
@@ -42,6 +42,17 @@ class Utils extends FleetbaseUtils
     public static function resolveApiKey(): ?string
     {
         return static::resolveSetting('api_key', config('valhalla.api_key', env('VALHALLA_API_KEY')));
+    }
+
+    /**
+     * An organization override whose host fails the host policy is ignored as a whole (host and key),
+     * so values saved before the policy existed fall back to the system server.
+     */
+    public static function organizationOverrideAllowed(array $organizationSettings): bool
+    {
+        $host = data_get($organizationSettings, 'api_host');
+
+        return !static::hasConfiguredValue($host) || HostPolicy::allows($host);
     }
 
     /**

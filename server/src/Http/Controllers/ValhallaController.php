@@ -5,6 +5,7 @@ namespace Fleetbase\Valhalla\Http\Controllers;
 use Fleetbase\Http\Controllers\Controller;
 use Fleetbase\Models\Setting;
 use Fleetbase\Valhalla\Exceptions\ValhallaException;
+use Fleetbase\Valhalla\Support\HostPolicy;
 use Fleetbase\Valhalla\Support\Utils;
 use Fleetbase\Valhalla\Support\Valhalla;
 use Fleetbase\Valhalla\Traits\AuthorizesMethods;
@@ -196,6 +197,7 @@ class ValhallaController extends Controller
 
     /**
      * Save the organization's Valhalla override. An empty `api_key` keeps the stored key; `clear_api_key` removes it.
+     * The host must pass the host policy (public http(s) addresses only), or the request fails with 422.
      *
      * POST /valhalla/int/v1/settings
      *
@@ -203,6 +205,11 @@ class ValhallaController extends Controller
      */
     public function saveSettings(Request $request)
     {
+        $apiHost = $request->input('api_host');
+        if (is_string($apiHost) && trim($apiHost) !== '' && ($violation = HostPolicy::violation($apiHost))) {
+            return response()->json(['errors' => [$violation]], 422);
+        }
+
         $stored = Utils::getOrganizationSettings();
 
         Setting::configureCompany('valhalla', [
