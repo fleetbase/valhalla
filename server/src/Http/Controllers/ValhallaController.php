@@ -6,6 +6,7 @@ use Fleetbase\Http\Controllers\Controller;
 use Fleetbase\Models\Setting;
 use Fleetbase\Valhalla\Exceptions\ValhallaException;
 use Fleetbase\Valhalla\Support\HostPolicy;
+use Fleetbase\Valhalla\Support\HostedRouting;
 use Fleetbase\Valhalla\Support\Utils;
 use Fleetbase\Valhalla\Support\Valhalla;
 use Fleetbase\Valhalla\Traits\AuthorizesMethods;
@@ -31,10 +32,11 @@ class ValhallaController extends Controller
         // so only system administrators may read or change them. Organization overrides
         // sit on the Fleet-Ops routing settings page and use its permission.
         $this->authorizeMethods([
-            'getSettings'       => ['fleet-ops view routing-settings', 'fleet-ops update routing-settings'],
-            'saveSettings'      => 'fleet-ops update routing-settings',
-            'getAdminSettings'  => 'admin',
-            'saveAdminSettings' => 'admin',
+            'getSettings'          => ['fleet-ops view routing-settings', 'fleet-ops update routing-settings'],
+            'saveSettings'         => 'fleet-ops update routing-settings',
+            'getAdminSettings'     => 'admin',
+            'saveAdminSettings'    => 'admin',
+            'getAdminHostedStatus' => 'admin',
         ]);
     }
 
@@ -193,6 +195,25 @@ class ValhallaController extends Controller
         $settings['has_environment_api_key']   = is_string($environmentApiKey) && trim($environmentApiKey) !== '';
 
         return response()->json($settings);
+    }
+
+    /**
+     * The Fleetbase Hosted Routing status of the system Valhalla server: the
+     * key's plan, limits and today's usage when the host is routing.fleetbase.io,
+     * with links to get, upgrade or manage the key on Fleetbase Cloud. Never
+     * includes the key.
+     *
+     * GET /valhalla/int/v1/admin-hosted-status
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAdminHostedStatus()
+    {
+        $settings = Utils::getSystemSettings();
+        $host     = data_get($settings, 'api_host') ?: config('valhalla.base_uri');
+        $apiKey   = data_get($settings, 'api_key') ?: config('valhalla.api_key');
+
+        return response()->json(HostedRouting::status($host, $apiKey));
     }
 
     /**
