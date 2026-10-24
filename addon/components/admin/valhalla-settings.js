@@ -5,6 +5,8 @@ import { debug } from '@ember/debug';
 import { task } from 'ember-concurrency';
 
 const HOSTED_PLAN_NAMES = {
+    routing_unverified: 'Community (free, email not confirmed)',
+    unverified: 'Community (free, email not confirmed)',
     routing_community: 'Community (free)',
     routing_starter: 'Starter',
     routing_growth: 'Growth',
@@ -41,8 +43,27 @@ export default class AdminValhallaSettingsComponent extends Component {
             plan,
             usage: quota > 0 ? `${used} of ${quota.toLocaleString()} routes used today` : `${used} routes today, no daily limit`,
             fallback: Boolean(usage.fallback),
-            isFree: usage.plan === 'routing_community' || usage.tier === 'community',
+            isFree: ['routing_community', 'routing_unverified'].includes(usage.plan) || ['community', 'unverified'].includes(usage.tier),
         };
+    }
+
+    /**
+     * A key this install got at install time and that no Cloud account has
+     * claimed yet. Its Upgrade link (`upgrade_url`) is the claim link, and
+     * there is no subscription to manage until it is claimed.
+     */
+    get isInstallKey() {
+        return Boolean(this.hosted?.install_key);
+    }
+
+    get emailNotice() {
+        if (!this.isInstallKey || this.hosted?.email_verified !== false) {
+            return null;
+        }
+
+        const to = this.hosted.email ? ` sent to ${this.hosted.email}` : '';
+
+        return `Confirm the email${to} to raise this key to 2,500 routes a day. Until then it has 500.`;
     }
 
     get isHostedKeyMissing() {

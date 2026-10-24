@@ -136,6 +136,82 @@ class HostedRoutingStatusTest extends TestCase
         $this->assertSame('unreachable', HostedRouting::status('https://routing.fleetbase.io', 'fbrl_x')['status']);
     }
 
+    protected function recordRegistration(array $overrides = []): void
+    {
+        Setting::configure('system.hosted-routing', array_merge([
+            'license'   => 'license-1',
+            'key_hint'  => 'ab12',
+            'email'     => 'admin@acme.com',
+            'claim_url' => 'https://console.fleetbase.io/~/routing?claim=code-1',
+        ], $overrides));
+    }
+
+    public function testAnUnclaimedInstallKeyUpgradesThroughItsClaimLink(): void
+    {
+        $this->recordRegistration();
+        Http::fake(['*' => Http::response(['tier' => 'unverified', 'plan' => 'routing_unverified', 'owner' => 'instance', 'daily_quota' => 500, 'used_today' => 3, 'remaining_today' => 497])]);
+
+        $status = HostedRouting::status('https://valhalla.routing.fleetbase.io', 'fbrl_xxxxab12');
+
+        $this->assertSame('ok', $status['status']);
+        $this->assertTrue($status['install_key']);
+        $this->assertFalse($status['email_verified']);
+        $this->assertSame('admin@acme.com', $status['email']);
+        $this->assertSame('https://console.fleetbase.io/~/routing?claim=code-1', $status['claim_url']);
+        $this->assertSame('https://console.fleetbase.io/~/routing?claim=code-1', $status['upgrade_url']);
+        $this->assertSame('instance', $status['usage']['owner']);
+    }
+
+    public function testAConfirmedInstallKeyIsNotAskedToConfirmAgain(): void
+    {
+        $this->recordRegistration();
+        Http::fake(['*' => Http::response(['tier' => 'community', 'plan' => 'routing_community', 'owner' => 'instance', 'daily_quota' => 2500, 'used_today' => 0, 'remaining_today' => 2500])]);
+
+        $status = HostedRouting::status('https://valhalla.routing.fleetbase.io', 'fbrl_xxxxab12');
+
+        $this->assertTrue($status['install_key']);
+        $this->assertTrue($status['email_verified']);
+    }
+
+    public function testAClaimedOrReplacedKeyUsesThePlainLinks(): void
+    {
+        $this->recordRegistration();
+        Http::fake(['*' => Http::response(['tier' => 'starter', 'plan' => 'routing_starter', 'owner' => 'company', 'daily_quota' => 25000, 'used_today' => 0, 'remaining_today' => 25000])]);
+
+        $claimed  = HostedRouting::status('https://valhalla.routing.fleetbase.io', 'fbrl_xxxxab12');
+        $replaced = HostedRouting::status('https://valhalla.routing.fleetbase.io', 'fbrl_xxxxzz99');
+
+        foreach ([$claimed, $replaced] as $status) {
+            $this->assertArrayNotHasKey('install_key', $status);
+            $this->assertArrayNotHasKey('claim_url', $status);
+            $this->assertSame('https://console.fleetbase.io/~/routing', $status['upgrade_url']);
+        }
+    }
+
+    public function testAnInstallKeyKeepsItsClaimLinkWhileTheServiceIsUnreachable(): void
+    {
+        $this->recordRegistration(['claim_url' => null]);
+        Http::fake(['*' => Http::response('', 503)]);
+
+        $status = HostedRouting::status('https://valhalla.routing.fleetbase.io', 'fbrl_xxxxab12');
+
+        $this->assertSame('unreachable', $status['status']);
+        $this->assertTrue($status['install_key']);
+        $this->assertArrayNotHasKey('email_verified', $status);
+        // Registered already claimed: no claim link to offer.
+        $this->assertArrayNotHasKey('claim_url', $status);
+        $this->assertSame('https://console.fleetbase.io/~/routing', $status['upgrade_url']);
+    }
+
+    public function testARegistrationWithoutAKeyHintMatchesNoKey(): void
+    {
+        Setting::configure('system.hosted-routing', ['email' => 'admin@acme.com']);
+        $this->assertNull(HostedRouting::registration('fbrl_xxxxab12'));
+
+        Setting::query()->delete();
+        $this->assertNull(HostedRouting::registration('fbrl_xxxxab12'));
+    }
+
     public function testTheConsoleLinksFollowConfiguration(): void
     {
         config(['valhalla.hosted.console_url' => 'https://console.example.test/']);

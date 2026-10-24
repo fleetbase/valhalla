@@ -17,13 +17,23 @@
                     {{#if this.isHostedKeyMissing}}
                         <a href={{this.hosted.signup_url}} target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">Get a free key</a>
                     {{else}}
-                        <a href={{this.hosted.upgrade_url}} target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
-                            {{if this.hostedSummary.isFree "Upgrade" "Change plan"}}
+                        <a href={{this.hosted.upgrade_url}} target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" data-test-hosted-routing-upgrade>
+                            {{if (or this.isInstallKey this.hostedSummary.isFree) "Upgrade" "Change plan"}}
                         </a>
-                        <a href={{this.hosted.manage_url}} target="_blank" rel="noopener noreferrer" class="btn btn-default btn-sm">Manage subscription</a>
+                        {{#unless this.isInstallKey}}
+                            <a href={{this.hosted.manage_url}} target="_blank" rel="noopener noreferrer" class="btn btn-default btn-sm">Manage subscription</a>
+                        {{/unless}}
                     {{/if}}
                 </div>
             </div>
+            {{#if this.isInstallKey}}
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400" data-test-hosted-routing-install-key>
+                    This free key was issued to this install. Upgrade opens Fleetbase Cloud, where you sign up or sign in and pick a plan; the key stays the same.
+                </p>
+            {{/if}}
+            {{#if this.emailNotice}}
+                <p class="mt-2 text-sm text-yellow-700 dark:text-yellow-400" data-test-hosted-routing-email>{{this.emailNotice}}</p>
+            {{/if}}
             {{#if this.hostedSummary.fallback}}
                 <p class="mt-2 text-sm text-yellow-700 dark:text-yellow-400">Your paid plan ended, so this key now has the free Community limits. Upgrade to restore them.</p>
             {{/if}}
