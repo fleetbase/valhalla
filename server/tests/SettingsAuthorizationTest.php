@@ -6,6 +6,8 @@ use Fleetbase\Models\Setting;
 use Fleetbase\Models\User;
 use Fleetbase\Valhalla\Http\Controllers\ValhallaController;
 use Fleetbase\Valhalla\Support\Authorization;
+use Fleetbase\Valhalla\Support\HostPolicy;
+use Fleetbase\Valhalla\Support\Utils;
 use Fleetbase\Valhalla\Support\Valhalla;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
@@ -20,12 +22,16 @@ class SettingsAuthorizationTest extends TestCase
         Setting::query()->delete();
         app('session')->put('company', 'company-1');
         config(['valhalla.api_key' => null]);
+
+        // Every example host resolves to a public address unless a test says otherwise.
+        HostPolicy::resolveHostsUsing(fn (string $host) => $host === 'internal.example.com' ? ['10.0.0.12'] : ['93.184.216.34']);
     }
 
     protected function tearDown(): void
     {
         Authorization::resolveUserUsing(null);
         Authorization::resolvePermissionsUsing(null);
+        HostPolicy::resolveHostsUsing(null);
         app('session')->flush();
 
         parent::tearDown();
@@ -185,6 +191,56 @@ class SettingsAuthorizationTest extends TestCase
         $this->signInAs($this->user('admin'));
 
         $this->assertSame(200, $this->call('saveSettings', ['api_host' => 'https://org.example.com'])->getStatusCode());
+    }
+
+    public static function blockedOrganizationHosts(): array
+    {
+        return [
+            'cloud metadata'      => ['http://169.254.169.254/latest/meta-data'],
+            'loopback'            => ['http://127.0.0.1:8002'],
+            'resolves to private' => ['https://internal.example.com'],
+            'file scheme'         => ['file:///etc/passwd'],
+        ];
+    }
+
+    /**
+     * @dataProvider blockedOrganizationHosts
+     */
+    public function testSavingOrganizationSettingsRejectsHostsTheServerMustNotCall(string $host): void
+    {
+        $this->signInAs($this->user(), ['fleet-ops update routing-settings']);
+        Setting::configureCompany('valhalla', ['api_host' => 'https://org.example.com', 'api_key' => 'org-secret']);
+
+        $response = $this->call('saveSettings', ['api_host' => $host, 'api_key' => 'new-secret']);
+
+        $this->assertSame(422, $response->getStatusCode());
+        $this->assertSame(['api_host' => 'https://org.example.com', 'api_key' => 'org-secret'], Setting::lookupCompany('valhalla'));
+    }
+
+    public function testSavingOrganizationSettingsAllowsPrivateHostsWhenConfigured(): void
+    {
+        $this->signInAs($this->user(), ['fleet-ops update routing-settings']);
+        config(['valhalla.allow_private_hosts' => true]);
+
+        try {
+            $this->assertSame(200, $this->call('saveSettings', ['api_host' => 'http://valhalla:8002'])->getStatusCode());
+        } finally {
+            config(['valhalla.allow_private_hosts' => false]);
+        }
+    }
+
+    public function testRuntimeIgnoresAStoredOrganizationOverrideWhoseHostIsBlocked(): void
+    {
+        Setting::configure('valhalla', ['api_host' => 'https://routing.example.com/valhalla', 'api_key' => 'system-secret']);
+        Setting::configureCompany('valhalla', ['api_host' => 'http://169.254.169.254', 'api_key' => 'org-secret']);
+
+        $this->assertSame('https://routing.example.com/valhalla', Utils::resolveBaseUri());
+        $this->assertSame('system-secret', Utils::resolveApiKey());
+
+        Setting::configureCompany('valhalla', ['api_host' => 'https://org.example.com', 'api_key' => 'org-secret']);
+
+        $this->assertSame('https://org.example.com', Utils::resolveBaseUri());
+        $this->assertSame('org-secret', Utils::resolveApiKey());
     }
 
     protected function user(string $type = 'user'): User

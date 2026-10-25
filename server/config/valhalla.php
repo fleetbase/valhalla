@@ -15,4 +15,6 @@ return [
     ],
     'base_uri' => env('VALHALLA_BASE_URI', env('VALHALLA_HOST', 'https://valhalla1.openstreetmap.de')),
     'api_key' => env('VALHALLA_API_KEY'),
+    // Let organization overrides point at private network hosts (self-hosted installs only).
+    'allow_private_hosts' => env('VALHALLA_ALLOW_PRIVATE_HOSTS', false),
 ];
