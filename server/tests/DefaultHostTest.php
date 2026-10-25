@@ -6,6 +6,7 @@ use Fleetbase\Models\Setting;
 use Fleetbase\Models\User;
 use Fleetbase\Valhalla\Http\Controllers\ValhallaController;
 use Fleetbase\Valhalla\Support\Authorization;
+use Fleetbase\Valhalla\Support\HostPolicy;
 use Fleetbase\Valhalla\Support\Utils;
 use Fleetbase\Valhalla\Support\Valhalla;
 use PHPUnit\Framework\TestCase;
@@ -22,12 +23,15 @@ class DefaultHostTest extends TestCase
 
         Setting::query()->delete();
         app('session')->put('company', 'company-1');
-        config(['valhalla.base_uri' => Valhalla::DEFAULT_BASE_URI, 'valhalla.api_key' => null]);
+        config(['valhalla.base_uri' => Valhalla::DEFAULT_BASE_URI, 'valhalla.api_key' => null, 'valhalla.allow_private_hosts' => false]);
+        // No network in tests: the example hosts resolve to a public address, internal.example to a private one.
+        HostPolicy::resolveHostsUsing(fn (string $host) => str_starts_with($host, 'internal.') ? ['10.0.0.5'] : ['93.184.216.34']);
     }
 
     protected function tearDown(): void
     {
         Authorization::resolveUserUsing(null);
+        HostPolicy::resolveHostsUsing(null);
         app('session')->flush();
 
         parent::tearDown();
@@ -87,6 +91,10 @@ class DefaultHostTest extends TestCase
 
         Setting::configureCompany('valhalla', ['api_host' => 'https://org.example.com']);
         $this->assertSame('https://org.example.com', Utils::resolveBaseUri());
+
+        // An organization host that fails the host policy (fleetbase/valhalla#10) is ignored too.
+        Setting::configureCompany('valhalla', ['api_host' => 'http://internal.example']);
+        $this->assertSame('https://system.example.com', Utils::resolveBaseUri());
         // The system host never takes an organization's override.
         $this->assertSame('https://system.example.com', Utils::resolveSystemBaseUri());
     }

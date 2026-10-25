@@ -35,13 +35,17 @@ class Utils extends FleetbaseUtils
     }
 
     /**
-     * The Valhalla server for the organization in session: its own host, then
-     * the system host, then the environment, then Fleetbase Hosted Routing.
-     * A host pointing at the OpenStreetMap community servers counts as unset.
+     * The Valhalla server for the organization in session: its own host (when
+     * it passes the host policy), then the system host, then the environment,
+     * then Fleetbase Hosted Routing. A host pointing at the OpenStreetMap
+     * community servers counts as unset.
      */
     public static function resolveBaseUri(): string
     {
-        foreach ([data_get(static::getOrganizationSettings(), 'api_host'), data_get(static::getSystemSettings(), 'api_host')] as $host) {
+        $organizationSettings = static::getOrganizationSettings();
+        $organizationHost     = static::organizationOverrideAllowed($organizationSettings) ? data_get($organizationSettings, 'api_host') : null;
+
+        foreach ([$organizationHost, data_get(static::getSystemSettings(), 'api_host')] as $host) {
             if (static::isUsableHost($host)) {
                 return $host;
             }
