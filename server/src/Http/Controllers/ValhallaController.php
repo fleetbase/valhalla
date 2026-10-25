@@ -3,13 +3,17 @@
 namespace Fleetbase\Valhalla\Http\Controllers;
 
 use Fleetbase\Http\Controllers\Controller;
+use Fleetbase\Models\Setting;
 use Fleetbase\Valhalla\Exceptions\ValhallaException;
 use Fleetbase\Valhalla\Support\Utils;
 use Fleetbase\Valhalla\Support\Valhalla;
+use Fleetbase\Valhalla\Traits\AuthorizesMethods;
 use Illuminate\Http\Request;
 
 class ValhallaController extends Controller
 {
+    use AuthorizesMethods;
+
     /**
      * The Valhalla service instance.
      */
@@ -21,6 +25,16 @@ class ValhallaController extends Controller
     public function __construct(Valhalla $valhalla)
     {
         $this->valhalla = $valhalla;
+
+        // The system settings set the Valhalla server every organization falls back to,
+        // so only system administrators may read or change them. Organization overrides
+        // sit on the Fleet-Ops routing settings page and use its permission.
+        $this->authorizeMethods([
+            'getSettings'       => ['fleet-ops view routing-settings', 'fleet-ops update routing-settings'],
+            'saveSettings'      => 'fleet-ops update routing-settings',
+            'getAdminSettings'  => 'admin',
+            'saveAdminSettings' => 'admin',
+        ]);
     }
 
     /**
@@ -143,6 +157,13 @@ class ValhallaController extends Controller
         }
     }
 
+    /**
+     * Get the organization's Valhalla override. The API key is reported as `has_api_key`, never returned.
+     *
+     * GET /valhalla/int/v1/settings
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getSettings()
     {
         $settings = Utils::getOrganizationSettings([
@@ -150,24 +171,43 @@ class ValhallaController extends Controller
             'api_key'  => null,
         ]);
 
-        return response()->json($settings);
+        return response()->json(Utils::withoutApiKey($settings));
     }
 
+    /**
+     * Get the system Valhalla settings. The API key is reported as `has_api_key`, never returned.
+     *
+     * GET /valhalla/int/v1/admin-settings
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getAdminSettings()
     {
-        $settings = Utils::getSystemSettings([
+        $settings = Utils::withoutApiKey(Utils::getSystemSettings([
             'api_host' => config('valhalla.base_uri', env('VALHALLA_BASE_URI', 'https://valhalla1.openstreetmap.de')),
-            'api_key'  => config('valhalla.api_key', env('VALHALLA_API_KEY')),
-        ]);
+            'api_key'  => null,
+        ]));
+
+        $environmentApiKey                     = config('valhalla.api_key', env('VALHALLA_API_KEY'));
+        $settings['has_environment_api_key']   = is_string($environmentApiKey) && trim($environmentApiKey) !== '';
 
         return response()->json($settings);
     }
 
+    /**
+     * Save the organization's Valhalla override. An empty `api_key` keeps the stored key; `clear_api_key` removes it.
+     *
+     * POST /valhalla/int/v1/settings
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function saveSettings(Request $request)
     {
-        \Fleetbase\Models\Setting::configureCompany('valhalla', [
+        $stored = Utils::getOrganizationSettings();
+
+        Setting::configureCompany('valhalla', [
             'api_host' => $request->input('api_host'),
-            'api_key'  => $request->input('api_key'),
+            'api_key'  => Utils::submittedApiKey($request->all(), data_get($stored, 'api_key')),
         ]);
 
         return response()->json([
@@ -176,11 +216,20 @@ class ValhallaController extends Controller
         ]);
     }
 
+    /**
+     * Save the system Valhalla settings. An empty `api_key` keeps the stored key; `clear_api_key` removes it.
+     *
+     * POST /valhalla/int/v1/admin-settings
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function saveAdminSettings(Request $request)
     {
-        \Fleetbase\Models\Setting::configure('valhalla', [
+        $stored = Utils::getSystemSettings();
+
+        Setting::configure('valhalla', [
             'api_host' => $request->input('api_host', config('valhalla.base_uri', env('VALHALLA_BASE_URI', 'https://valhalla1.openstreetmap.de'))),
-            'api_key'  => $request->input('api_key', config('valhalla.api_key', env('VALHALLA_API_KEY'))),
+            'api_key'  => Utils::submittedApiKey($request->all(), data_get($stored, 'api_key')),
         ]);
 
         return response()->json([

@@ -10,6 +10,8 @@ export default class OrganizationValhallaSettingsComponent extends Component {
     @tracked useOwnServer = false;
     @tracked apiKey;
     @tracked apiHost;
+    @tracked hasApiKey = false;
+    @tracked clearApiKey = false;
 
     get saveTaskKey() {
         return 'organization:valhalla-settings';
@@ -36,10 +38,12 @@ export default class OrganizationValhallaSettingsComponent extends Component {
 
     @task *loadValhallaSettings() {
         try {
-            const { api_key, api_host } = yield this.fetch.get('settings', {}, { namespace: 'valhalla/int/v1' });
-            this.apiKey = api_key;
+            const { api_host, has_api_key } = yield this.fetch.get('settings', {}, { namespace: 'valhalla/int/v1' });
+            this.apiKey = null;
             this.apiHost = api_host;
-            this.useOwnServer = Boolean((typeof api_key === 'string' && api_key.trim() !== '') || (typeof api_host === 'string' && api_host.trim() !== ''));
+            this.hasApiKey = Boolean(has_api_key);
+            this.clearApiKey = false;
+            this.useOwnServer = Boolean(this.hasApiKey || (typeof api_host === 'string' && api_host.trim() !== ''));
         } catch (err) {
             debug(`Valhalla : Error fetching organization valhalla settings: ${err.message}`);
         }
@@ -50,15 +54,20 @@ export default class OrganizationValhallaSettingsComponent extends Component {
             return true;
         }
 
+        // The stored key is never sent to the console: a blank key keeps it, `clear_api_key` removes it.
+        const clearApiKey = !this.useOwnServer || this.clearApiKey;
+
         try {
             yield this.fetch.post(
                 'settings',
                 {
-                    api_key: this.useOwnServer ? this.apiKey : null,
+                    api_key: clearApiKey ? null : this.apiKey,
+                    clear_api_key: clearApiKey,
                     api_host: this.useOwnServer ? this.apiHost : null,
                 },
                 { namespace: 'valhalla/int/v1' }
             );
+            yield this.loadValhallaSettings.perform();
         } catch (err) {
             debug(`Valhalla : Error saving organization valhalla settings: ${err.message}`);
             this.notifications.serverError(err);
