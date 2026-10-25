@@ -34,9 +34,51 @@ class Utils extends FleetbaseUtils
         return $defaultValue;
     }
 
+    /**
+     * The Valhalla server for the organization in session: its own host (when
+     * it passes the host policy), then the system host, then the environment,
+     * then Fleetbase Hosted Routing. A host pointing at the OpenStreetMap
+     * community servers counts as unset.
+     */
     public static function resolveBaseUri(): string
     {
-        return static::resolveSetting('api_host', config('valhalla.base_uri', env('VALHALLA_BASE_URI', 'https://valhalla1.openstreetmap.de')));
+        $organizationSettings = static::getOrganizationSettings();
+        $organizationHost     = static::organizationOverrideAllowed($organizationSettings) ? data_get($organizationSettings, 'api_host') : null;
+
+        foreach ([$organizationHost, data_get(static::getSystemSettings(), 'api_host')] as $host) {
+            if (static::isUsableHost($host)) {
+                return $host;
+            }
+        }
+
+        return static::resolveConfiguredBaseUri();
+    }
+
+    /**
+     * The system Valhalla server (admin settings, then the environment, then
+     * Fleetbase Hosted Routing), ignoring any organization override.
+     */
+    public static function resolveSystemBaseUri(): string
+    {
+        $host = data_get(static::getSystemSettings(), 'api_host');
+
+        return static::isUsableHost($host) ? $host : static::resolveConfiguredBaseUri();
+    }
+
+    /**
+     * The environment's Valhalla server (VALHALLA_BASE_URI / VALHALLA_HOST),
+     * or Fleetbase Hosted Routing when it is unset or a community server.
+     */
+    public static function resolveConfiguredBaseUri(): string
+    {
+        $host = config('valhalla.base_uri');
+
+        return static::isUsableHost($host) ? $host : Valhalla::DEFAULT_BASE_URI;
+    }
+
+    protected static function isUsableHost($host): bool
+    {
+        return static::hasConfiguredValue($host) && !Valhalla::isPublicHost($host);
     }
 
     public static function resolveApiKey(): ?string

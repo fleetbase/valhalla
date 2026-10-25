@@ -1,6 +1,52 @@
 <ContentPanel @title="Configure Valhalla" @open={{true}} @wrapperClass="bordered-classic">
-    <InputGroup @name="Valhalla API Host" @helpText="Base URL for the default Valhalla routing service used across organizations.">
-        <Input @value={{this.apiHost}} placeholder="https://valhalla1.openstreetmap.de" class="w-full form-input" />
+    {{#if this.hosted.hosted}}
+        <div class="mb-4 rounded-md border border-gray-200 px-3 py-3 dark:border-gray-700" data-test-hosted-routing>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <div class="text-sm font-semibold">Fleetbase Hosted Routing</div>
+                    {{#if this.hostedSummary}}
+                        <div class="text-sm text-gray-600 dark:text-gray-400" data-test-hosted-routing-usage>
+                            {{this.hostedSummary.plan}}
+                            plan ·
+                            {{this.hostedSummary.usage}}
+                            · resets 00:00 UTC
+                        </div>
+                    {{/if}}
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    {{#if this.isHostedKeyMissing}}
+                        <a href={{this.hosted.signup_url}} target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">Get a free key</a>
+                    {{else}}
+                        <a href={{this.hosted.upgrade_url}} target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" data-test-hosted-routing-upgrade>
+                            {{if (or this.isInstallKey this.hostedSummary.isFree) "Upgrade" "Change plan"}}
+                        </a>
+                        {{#unless this.isInstallKey}}
+                            <a href={{this.hosted.manage_url}} target="_blank" rel="noopener noreferrer" class="btn btn-default btn-sm">Manage subscription</a>
+                        {{/unless}}
+                    {{/if}}
+                </div>
+            </div>
+            {{#if this.isInstallKey}}
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400" data-test-hosted-routing-install-key>
+                    This free key was issued to this install. Upgrade opens Fleetbase Cloud, where you sign up or sign in and pick a plan; the key stays the same.
+                </p>
+            {{/if}}
+            {{#if this.emailNotice}}
+                <p class="mt-2 text-sm text-yellow-700 dark:text-yellow-400" data-test-hosted-routing-email>{{this.emailNotice}}</p>
+            {{/if}}
+            {{#if this.hostedSummary.fallback}}
+                <p class="mt-2 text-sm text-yellow-700 dark:text-yellow-400">Your paid plan ended, so this key now has the free Community limits. Upgrade to restore them.</p>
+            {{/if}}
+            {{#if this.hostedMessage}}
+                <p class="mt-2 text-sm text-yellow-700 dark:text-yellow-400" data-test-hosted-routing-message>{{this.hostedMessage}}</p>
+            {{/if}}
+        </div>
+    {{/if}}
+    <InputGroup
+        @name="Valhalla API Host"
+        @helpText="Base URL for the default Valhalla routing service used across organizations. For Fleetbase Hosted Routing use https://valhalla.routing.fleetbase.io."
+    >
+        <Input @value={{this.apiHost}} placeholder="https://valhalla.routing.fleetbase.io" class="w-full form-input" />
     </InputGroup>
     <InputGroup @name="Valhalla API Key" @helpText={{this.apiKeyHelpText}}>
         <Input

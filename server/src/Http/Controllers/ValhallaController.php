@@ -6,6 +6,7 @@ use Fleetbase\Http\Controllers\Controller;
 use Fleetbase\Models\Setting;
 use Fleetbase\Valhalla\Exceptions\ValhallaException;
 use Fleetbase\Valhalla\Support\HostPolicy;
+use Fleetbase\Valhalla\Support\HostedRouting;
 use Fleetbase\Valhalla\Support\Utils;
 use Fleetbase\Valhalla\Support\Valhalla;
 use Fleetbase\Valhalla\Traits\AuthorizesMethods;
@@ -31,10 +32,11 @@ class ValhallaController extends Controller
         // so only system administrators may read or change them. Organization overrides
         // sit on the Fleet-Ops routing settings page and use its permission.
         $this->authorizeMethods([
-            'getSettings'       => ['fleet-ops view routing-settings', 'fleet-ops update routing-settings'],
-            'saveSettings'      => 'fleet-ops update routing-settings',
-            'getAdminSettings'  => 'admin',
-            'saveAdminSettings' => 'admin',
+            'getSettings'          => ['fleet-ops view routing-settings', 'fleet-ops update routing-settings'],
+            'saveSettings'         => 'fleet-ops update routing-settings',
+            'getAdminSettings'     => 'admin',
+            'saveAdminSettings'    => 'admin',
+            'getAdminHostedStatus' => 'admin',
         ]);
     }
 
@@ -184,15 +186,30 @@ class ValhallaController extends Controller
      */
     public function getAdminSettings()
     {
-        $settings = Utils::withoutApiKey(Utils::getSystemSettings([
-            'api_host' => config('valhalla.base_uri', env('VALHALLA_BASE_URI', 'https://valhalla1.openstreetmap.de')),
-            'api_key'  => null,
-        ]));
+        $settings             = Utils::withoutApiKey(Utils::getSystemSettings(['api_key' => null]));
+        $settings['api_host'] = Utils::resolveSystemBaseUri();
 
         $environmentApiKey                     = config('valhalla.api_key', env('VALHALLA_API_KEY'));
         $settings['has_environment_api_key']   = is_string($environmentApiKey) && trim($environmentApiKey) !== '';
 
         return response()->json($settings);
+    }
+
+    /**
+     * The Fleetbase Hosted Routing status of the system Valhalla server: the
+     * key's plan, limits and today's usage when the host is routing.fleetbase.io,
+     * with links to get, upgrade or manage the key on Fleetbase Cloud. Never
+     * includes the key.
+     *
+     * GET /valhalla/int/v1/admin-hosted-status
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAdminHostedStatus()
+    {
+        $apiKey = data_get(Utils::getSystemSettings(), 'api_key') ?: config('valhalla.api_key');
+
+        return response()->json(HostedRouting::status(Utils::resolveSystemBaseUri(), $apiKey));
     }
 
     /**
@@ -235,7 +252,7 @@ class ValhallaController extends Controller
         $stored = Utils::getSystemSettings();
 
         Setting::configure('valhalla', [
-            'api_host' => $request->input('api_host', config('valhalla.base_uri', env('VALHALLA_BASE_URI', 'https://valhalla1.openstreetmap.de'))),
+            'api_host' => $request->input('api_host', Utils::resolveConfiguredBaseUri()),
             'api_key'  => Utils::submittedApiKey($request->all(), data_get($stored, 'api_key')),
         ]);
 
