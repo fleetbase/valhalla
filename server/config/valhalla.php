@@ -13,7 +13,9 @@ return [
             'internal_prefix' => 'int'
         ],
     ],
-    'base_uri' => env('VALHALLA_BASE_URI', env('VALHALLA_HOST', 'https://valhalla1.openstreetmap.de')),
+    // Fleetbase Hosted Routing by default (needs a key: free from Fleetbase Cloud at /~/routing).
+    // The OpenStreetMap community servers are never used, even when set here.
+    'base_uri' => env('VALHALLA_BASE_URI', env('VALHALLA_HOST', 'https://valhalla.routing.fleetbase.io')),
     'api_key' => env('VALHALLA_API_KEY'),
     // Let organization overrides point at private network hosts (self-hosted installs only).
     'allow_private_hosts' => env('VALHALLA_ALLOW_PRIVATE_HOSTS', false),

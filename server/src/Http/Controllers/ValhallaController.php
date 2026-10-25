@@ -186,10 +186,8 @@ class ValhallaController extends Controller
      */
     public function getAdminSettings()
     {
-        $settings = Utils::withoutApiKey(Utils::getSystemSettings([
-            'api_host' => config('valhalla.base_uri', env('VALHALLA_BASE_URI', 'https://valhalla1.openstreetmap.de')),
-            'api_key'  => null,
-        ]));
+        $settings             = Utils::withoutApiKey(Utils::getSystemSettings(['api_key' => null]));
+        $settings['api_host'] = Utils::resolveSystemBaseUri();
 
         $environmentApiKey                     = config('valhalla.api_key', env('VALHALLA_API_KEY'));
         $settings['has_environment_api_key']   = is_string($environmentApiKey) && trim($environmentApiKey) !== '';
@@ -209,11 +207,9 @@ class ValhallaController extends Controller
      */
     public function getAdminHostedStatus()
     {
-        $settings = Utils::getSystemSettings();
-        $host     = data_get($settings, 'api_host') ?: config('valhalla.base_uri');
-        $apiKey   = data_get($settings, 'api_key') ?: config('valhalla.api_key');
+        $apiKey = data_get(Utils::getSystemSettings(), 'api_key') ?: config('valhalla.api_key');
 
-        return response()->json(HostedRouting::status($host, $apiKey));
+        return response()->json(HostedRouting::status(Utils::resolveSystemBaseUri(), $apiKey));
     }
 
     /**
@@ -256,7 +252,7 @@ class ValhallaController extends Controller
         $stored = Utils::getSystemSettings();
 
         Setting::configure('valhalla', [
-            'api_host' => $request->input('api_host', config('valhalla.base_uri', env('VALHALLA_BASE_URI', 'https://valhalla1.openstreetmap.de'))),
+            'api_host' => $request->input('api_host', Utils::resolveConfiguredBaseUri()),
             'api_key'  => Utils::submittedApiKey($request->all(), data_get($stored, 'api_key')),
         ]);
 

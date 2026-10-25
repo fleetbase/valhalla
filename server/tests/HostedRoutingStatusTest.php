@@ -247,7 +247,11 @@ class HostedRoutingStatusTest extends TestCase
         Http::assertSent(fn (HttpRequest $request) => $request->url() === 'https://routing.fleetbase.io/valhalla/usage'
             && $request->header('X-Api-Key') === ['fbrl_env']);
 
-        config(['valhalla.base_uri' => 'https://valhalla1.openstreetmap.de']);
+        // A community server counts as unset, so the panel reports the hosted default.
+        config(['valhalla.base_uri' => 'https://valhalla1.openstreetmap.de', 'valhalla.api_key' => null]);
+        $this->assertSame('missing_key', $this->call('getAdminHostedStatus')->getData(true)['status']);
+
+        config(['valhalla.base_uri' => 'https://valhalla.example.com']);
         $this->assertSame(['hosted' => false], $this->call('getAdminHostedStatus')->getData(true));
     }
 
