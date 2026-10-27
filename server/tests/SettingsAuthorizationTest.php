@@ -1,0 +1,279 @@
+<?php
+
+namespace Fleetbase\Valhalla\Tests;
+
+use Fleetbase\Models\Setting;
+use Fleetbase\Models\User;
+use Fleetbase\Valhalla\Http\Controllers\ValhallaController;
+use Fleetbase\Valhalla\Support\Authorization;
+use Fleetbase\Valhalla\Support\HostPolicy;
+use Fleetbase\Valhalla\Support\Utils;
+use Fleetbase\Valhalla\Support\Valhalla;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Request;
+use PHPUnit\Framework\TestCase;
+
+class SettingsAuthorizationTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Setting::query()->delete();
+        app('session')->put('company', 'company-1');
+        config(['valhalla.api_key' => null]);
+
+        // Every example host resolves to a public address unless a test says otherwise.
+        HostPolicy::resolveHostsUsing(fn (string $host) => $host === 'internal.example.com' ? ['10.0.0.12'] : ['93.184.216.34']);
+    }
+
+    protected function tearDown(): void
+    {
+        Authorization::resolveUserUsing(null);
+        Authorization::resolvePermissionsUsing(null);
+        HostPolicy::resolveHostsUsing(null);
+        app('session')->flush();
+
+        parent::tearDown();
+    }
+
+    public static function adminMethods(): array
+    {
+        return [['getAdminSettings'], ['saveAdminSettings']];
+    }
+
+    /**
+     * @dataProvider adminMethods
+     */
+    public function testAdminSettingsRefuseUsersWhoAreNotSystemAdministrators(string $method): void
+    {
+        $this->signInAs($this->user(), ['fleet-ops update routing-settings', 'fleet-ops view routing-settings']);
+
+        $response = $this->call($method, ['api_host' => 'https://attacker.example.com']);
+
+        $this->assertSame(401, $response->getStatusCode());
+        $this->assertNull(Setting::lookup('valhalla'));
+    }
+
+    /**
+     * @dataProvider adminMethods
+     */
+    public function testAdminSettingsRefuseRequestsWithoutAUser(string $method): void
+    {
+        $this->signInAs(null);
+
+        $this->assertSame(401, $this->call($method)->getStatusCode());
+    }
+
+    public function testAdminSettingsNeverReturnTheStoredOrEnvironmentApiKey(): void
+    {
+        $this->signInAs($this->user('admin'));
+        config(['valhalla.api_key' => 'env-secret']);
+        Setting::configure('valhalla', ['api_host' => 'https://routing.example.com/valhalla', 'api_key' => 'stored-secret']);
+
+        $response = $this->call('getAdminSettings');
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertStringNotContainsString('stored-secret', $response->getContent());
+        $this->assertStringNotContainsString('env-secret', $response->getContent());
+        $this->assertSame([
+            'api_host'                => 'https://routing.example.com/valhalla',
+            'has_api_key'             => true,
+            'has_environment_api_key' => true,
+        ], $response->getData(true));
+    }
+
+    public function testAdminSettingsReportAnUnsetKey(): void
+    {
+        $this->signInAs($this->user('admin'));
+
+        $data = $this->call('getAdminSettings')->getData(true);
+
+        $this->assertFalse($data['has_api_key']);
+        $this->assertFalse($data['has_environment_api_key']);
+        $this->assertArrayNotHasKey('api_key', $data);
+    }
+
+    public static function blankKeys(): array
+    {
+        return ['missing' => ['missing'], 'null' => [null], 'empty' => [''], 'whitespace' => ['   ']];
+    }
+
+    /**
+     * @dataProvider blankKeys
+     */
+    public function testSavingAdminSettingsWithABlankKeyKeepsTheStoredKey(?string $submitted): void
+    {
+        $this->signInAs($this->user('admin'));
+        Setting::configure('valhalla', ['api_host' => 'https://old.example.com', 'api_key' => 'stored-secret']);
+
+        $input = ['api_host' => 'https://new.example.com'];
+        if ($submitted !== 'missing') {
+            $input['api_key'] = $submitted;
+        }
+
+        $this->assertSame(200, $this->call('saveAdminSettings', $input)->getStatusCode());
+        $this->assertSame(['api_host' => 'https://new.example.com', 'api_key' => 'stored-secret'], Setting::lookup('valhalla'));
+    }
+
+    public function testSavingAdminSettingsReplacesOrClearsTheKey(): void
+    {
+        $this->signInAs($this->user('admin'));
+        Setting::configure('valhalla', ['api_host' => 'https://old.example.com', 'api_key' => 'stored-secret']);
+
+        $this->call('saveAdminSettings', ['api_host' => 'https://old.example.com', 'api_key' => 'new-secret']);
+        $this->assertSame('new-secret', data_get(Setting::lookup('valhalla'), 'api_key'));
+
+        $this->call('saveAdminSettings', ['api_host' => 'https://old.example.com', 'api_key' => 'ignored', 'clear_api_key' => true]);
+        $this->assertNull(data_get(Setting::lookup('valhalla'), 'api_key'));
+    }
+
+    public function testSavingAdminSettingsDoesNotCopyTheEnvironmentKeyIntoTheDatabase(): void
+    {
+        $this->signInAs($this->user('admin'));
+        config(['valhalla.api_key' => 'env-secret']);
+
+        $this->call('saveAdminSettings', ['api_host' => 'https://routing.example.com']);
+
+        $this->assertNull(data_get(Setting::lookup('valhalla'), 'api_key'));
+    }
+
+    public static function organizationPermissionCases(): array
+    {
+        return [
+            'read without permission' => ['getSettings', [], 401],
+            'read with view'          => ['getSettings', ['fleet-ops view routing-settings'], 200],
+            'read with update'        => ['getSettings', ['fleet-ops update routing-settings'], 200],
+            'save without permission' => ['saveSettings', [], 401],
+            'save with view only'     => ['saveSettings', ['fleet-ops view routing-settings'], 401],
+            'save with update'        => ['saveSettings', ['fleet-ops update routing-settings'], 200],
+        ];
+    }
+
+    /**
+     * @dataProvider organizationPermissionCases
+     */
+    public function testOrganizationSettingsRequireTheRoutingSettingsPermission(string $method, array $permissions, int $status): void
+    {
+        $this->signInAs($this->user(), $permissions);
+
+        $this->assertSame($status, $this->call($method, ['api_host' => 'https://org.example.com'])->getStatusCode());
+    }
+
+    public function testOrganizationSettingsNeverReturnTheApiKey(): void
+    {
+        $this->signInAs($this->user(), ['fleet-ops view routing-settings']);
+        Setting::configureCompany('valhalla', ['api_host' => 'https://org.example.com', 'api_key' => 'org-secret']);
+
+        $response = $this->call('getSettings');
+
+        $this->assertStringNotContainsString('org-secret', $response->getContent());
+        $this->assertSame(['api_host' => 'https://org.example.com', 'has_api_key' => true], $response->getData(true));
+    }
+
+    public function testSavingOrganizationSettingsKeepsReplacesAndClearsTheKey(): void
+    {
+        $this->signInAs($this->user(), ['fleet-ops update routing-settings']);
+        Setting::configureCompany('valhalla', ['api_host' => 'https://org.example.com', 'api_key' => 'org-secret']);
+
+        $this->call('saveSettings', ['api_host' => 'https://org2.example.com', 'api_key' => '']);
+        $this->assertSame(['api_host' => 'https://org2.example.com', 'api_key' => 'org-secret'], Setting::lookupCompany('valhalla'));
+
+        $this->call('saveSettings', ['api_host' => 'https://org2.example.com', 'api_key' => 'org-secret-2']);
+        $this->assertSame('org-secret-2', data_get(Setting::lookupCompany('valhalla'), 'api_key'));
+
+        $this->call('saveSettings', ['api_host' => null, 'api_key' => null, 'clear_api_key' => true]);
+        $this->assertSame(['api_host' => null, 'api_key' => null], Setting::lookupCompany('valhalla'));
+    }
+
+    public function testSystemAdministratorsPassTheOrganizationPermissionCheck(): void
+    {
+        $this->signInAs($this->user('admin'));
+
+        $this->assertSame(200, $this->call('saveSettings', ['api_host' => 'https://org.example.com'])->getStatusCode());
+    }
+
+    public static function blockedOrganizationHosts(): array
+    {
+        return [
+            'cloud metadata'      => ['http://169.254.169.254/latest/meta-data'],
+            'loopback'            => ['http://127.0.0.1:8002'],
+            'resolves to private' => ['https://internal.example.com'],
+            'file scheme'         => ['file:///etc/passwd'],
+        ];
+    }
+
+    /**
+     * @dataProvider blockedOrganizationHosts
+     */
+    public function testSavingOrganizationSettingsRejectsHostsTheServerMustNotCall(string $host): void
+    {
+        $this->signInAs($this->user(), ['fleet-ops update routing-settings']);
+        Setting::configureCompany('valhalla', ['api_host' => 'https://org.example.com', 'api_key' => 'org-secret']);
+
+        $response = $this->call('saveSettings', ['api_host' => $host, 'api_key' => 'new-secret']);
+
+        $this->assertSame(422, $response->getStatusCode());
+        $this->assertSame(['api_host' => 'https://org.example.com', 'api_key' => 'org-secret'], Setting::lookupCompany('valhalla'));
+    }
+
+    public function testSavingOrganizationSettingsAllowsPrivateHostsWhenConfigured(): void
+    {
+        $this->signInAs($this->user(), ['fleet-ops update routing-settings']);
+        config(['valhalla.allow_private_hosts' => true]);
+
+        try {
+            $this->assertSame(200, $this->call('saveSettings', ['api_host' => 'http://valhalla:8002'])->getStatusCode());
+        } finally {
+            config(['valhalla.allow_private_hosts' => false]);
+        }
+    }
+
+    public function testRuntimeIgnoresAStoredOrganizationOverrideWhoseHostIsBlocked(): void
+    {
+        Setting::configure('valhalla', ['api_host' => 'https://routing.example.com/valhalla', 'api_key' => 'system-secret']);
+        Setting::configureCompany('valhalla', ['api_host' => 'http://169.254.169.254', 'api_key' => 'org-secret']);
+
+        $this->assertSame('https://routing.example.com/valhalla', Utils::resolveBaseUri());
+        $this->assertSame('system-secret', Utils::resolveApiKey());
+
+        Setting::configureCompany('valhalla', ['api_host' => 'https://org.example.com', 'api_key' => 'org-secret']);
+
+        $this->assertSame('https://org.example.com', Utils::resolveBaseUri());
+        $this->assertSame('org-secret', Utils::resolveApiKey());
+    }
+
+    protected function user(string $type = 'user'): User
+    {
+        return (new User())->forceFill(['type' => $type]);
+    }
+
+    protected function signInAs(?User $user, array $permissions = []): void
+    {
+        Authorization::resolveUserUsing(fn () => $user);
+        Authorization::resolvePermissionsUsing(fn (string $permission) => in_array($permission, $permissions, true));
+    }
+
+    /**
+     * Run a controller action through the middleware it registers, as the router would.
+     */
+    protected function call(string $method, array $input = [])
+    {
+        $controller = new ValhallaController(new Valhalla());
+        $request    = Request::create('/valhalla/int/v1/settings', 'POST', $input);
+        $pipeline   = fn () => $controller->{$method}($request);
+
+        foreach (array_reverse($controller->getMiddleware()) as $middleware) {
+            if (in_array($method, $middleware['options']['only'] ?? [], true)) {
+                $next     = $pipeline;
+                $pipeline = fn () => $middleware['middleware']($request, fn () => $next());
+            }
+        }
+
+        try {
+            return $pipeline();
+        } catch (HttpResponseException $e) {
+            return $e->getResponse();
+        }
+    }
+}

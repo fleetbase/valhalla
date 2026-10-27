@@ -1,24 +1,32 @@
-import Service from '@ember/service';
+import Service, { inject as service } from '@ember/service';
 import Routing from '@fleetbase/leaflet-routing-machine';
 import corslite from '@fleetbase/ember-core/utils/corslite';
 import polyline from '@fleetbase/ember-core/utils/polyline';
-import { later } from '@ember/runloop';
+import { later, cancel } from '@ember/runloop';
 
 const L = window.L ?? {};
 export default class ValhallaRoutingService extends Service {
+    @service fetch;
+
     initialize() {
         this.#createRoutingControl();
         this.#createValhallaRoutingFormatter();
     }
 
     #createRoutingControl() {
+        // Without a serviceUrl the router posts to this extension's server proxy
+        // (valhalla/int/v1/route), which calls the configured Valhalla server
+        // (Fleetbase Hosted Routing by default) with its key. The key never
+        // reaches the browser, and the server needs no CORS.
+        const fetch = this.fetch;
+
         L.Routing = Routing;
         L.Routing.Valhalla = L.Class.extend({
             initialize: function (accessToken, transitmode = 'auto', costingOptions, options) {
                 L.Util.setOptions(
                     this,
                     options || {
-                        serviceUrl: '//valhalla1.openstreetmap.de/',
+                        serviceUrl: null,
                         timeout: 30 * 1000,
                         transitmode: 'auto',
                     }
@@ -41,7 +49,6 @@ export default class ValhallaRoutingService extends Service {
 
                 options = options || {};
                 //waypoints = options.waypoints || waypoints;
-                url = this.buildRouteUrl(waypoints, options);
 
                 timer = later(
                     this,
@@ -49,7 +56,7 @@ export default class ValhallaRoutingService extends Service {
                         timedOut = true;
                         callback.call(context || callback, {
                             status: -1,
-                            message: 'OSRM request timed out.',
+                            message: 'Valhalla request timed out.',
                         });
                     },
                     this.options.timeout
@@ -67,12 +74,35 @@ export default class ValhallaRoutingService extends Service {
                     });
                 }
 
+                if (!this.options.serviceUrl) {
+                    fetch
+                        .post('route', this.buildRoutePayload(waypoints, options), { namespace: 'valhalla/int/v1' })
+                        .then((data) => {
+                            cancel(timer);
+                            if (!timedOut) {
+                                this._routeDone(data, wps, callback, context);
+                            }
+                        })
+                        .catch((error) => {
+                            cancel(timer);
+                            if (!timedOut) {
+                                callback.call(context || callback, {
+                                    status: error?.status ?? -1,
+                                    message: error?.message ?? 'Valhalla request failed.',
+                                });
+                            }
+                        });
+
+                    return this;
+                }
+
+                url = this.buildRouteUrl(waypoints, options);
                 corslite(
                     url,
                     L.bind(function (err, resp) {
                         var data;
 
-                        clearTimeout(timer);
+                        cancel(timer);
                         if (!timedOut) {
                             if (!err) {
                                 data = JSON.parse(resp.responseText);
@@ -170,6 +200,12 @@ export default class ValhallaRoutingService extends Service {
             },
             /* eslint-disable no-unused-vars */
             buildRouteUrl: function (waypoints, options) {
+                var params = JSON.stringify(this.buildRoutePayload(waypoints, options));
+
+                return this.options.serviceUrl + 'route?json=' + params + (this._accessToken ? '&api_key=' + this._accessToken : '');
+            },
+
+            buildRoutePayload: function (waypoints, options = {}) {
                 var locs = [],
                     locationKey,
                     hint;
@@ -197,14 +233,12 @@ export default class ValhallaRoutingService extends Service {
                     locs.push(loc);
                 }
 
-                var params = JSON.stringify({
+                return {
                     locations: locs,
                     costing: transitM,
                     street: streetName,
                     costing_options: costingOptions,
-                });
-
-                return this.options.serviceUrl + 'route?json=' + params + (this._accessToken ? '&api_key=' + this._accessToken : '');
+                };
             },
 
             _locationKey: function (location) {

@@ -1,10 +1,52 @@
 <ContentPanel @title="Configure Valhalla" @open={{true}} @wrapperClass="bordered-classic">
-    <InputGroup @name="Valhalla API Host" @helpText="Base URL for the default Valhalla routing service used across organizations.">
-        <Input @value={{this.apiHost}} placeholder="https://valhalla1.openstreetmap.de" class="w-full form-input" />
+    {{#if this.hosted.hosted}}
+        <div class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400" data-test-hosted-routing>
+            <span class="font-medium text-gray-600 dark:text-gray-300">Fleetbase Hosted Valhalla</span>
+            {{#if this.hostedSummary}}
+                <span data-test-hosted-routing-usage>· {{this.hostedSummary.plan}} · {{this.hostedSummary.usage}}</span>
+            {{/if}}
+            <span>·</span>
+            {{#if this.isHostedKeyMissing}}
+                <a href={{this.hosted.signup_url}} target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-700 dark:hover:text-gray-200">Get a free key</a>
+            {{else}}
+                <a
+                    href={{this.hosted.upgrade_url}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={{if this.isInstallKey "Opens Fleetbase Cloud: sign up or sign in and pick a plan. The key stays the same."}}
+                    class="underline hover:text-gray-700 dark:hover:text-gray-200"
+                    data-test-hosted-routing-upgrade
+                >{{this.upgradeLabel}}</a>
+                {{#unless this.isInstallKey}}
+                    <a href={{this.hosted.manage_url}} target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-700 dark:hover:text-gray-200">Manage</a>
+                {{/unless}}
+            {{/if}}
+        </div>
+        {{#if this.hostedNotice}}
+            <p class="-mt-2 mb-3 text-xs text-yellow-700 dark:text-yellow-400" data-test-hosted-routing-message>{{this.hostedNotice}}</p>
+        {{/if}}
+    {{/if}}
+    <InputGroup
+        @name="Valhalla API Host"
+        @helpText="Base URL for the default Valhalla routing service used across organizations. For Fleetbase Hosted Valhalla use https://valhalla.routing.fleetbase.io."
+    >
+        <Input @value={{this.apiHost}} placeholder="https://valhalla.routing.fleetbase.io" class="w-full form-input" />
     </InputGroup>
-    <InputGroup @name="Valhalla API Key" @helpText="Optional API key for the system-wide Valhalla service.">
-        <Input @value={{this.apiKey}} placeholder="Enter system Valhalla API key" class="w-full form-input" />
+    <InputGroup @name="Valhalla API Key" @helpText={{this.apiKeyHelpText}}>
+        <Input
+            @type="password"
+            @value={{this.apiKey}}
+            placeholder={{if this.hasApiKey "Saved key hidden. Enter a new key to replace it" "Enter system Valhalla API key"}}
+            autocomplete="new-password"
+            disabled={{this.clearApiKey}}
+            class="w-full form-input"
+        />
     </InputGroup>
+    {{#if this.hasApiKey}}
+        <InputGroup>
+            <Checkbox @value={{this.clearApiKey}} @label="Remove the saved API key" @onToggle={{fn (mut this.clearApiKey)}} @alignItems="center" @labelClass="mb-0i" />
+        </InputGroup>
+    {{/if}}
 
     <div class="mt-4">
         <Button @text="Save Valhalla Settings" @type="primary" @size="sm" @icon="save" @onClick={{perform this.saveValhallaSettings}} @isLoading={{this.saveValhallaSettings.isRunning}} />

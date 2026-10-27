@@ -34,6 +34,7 @@ Route::prefix(config('valhalla.api.routing.prefix', 'valhalla'))->namespace('Fle
                         $router->get('settings', 'ValhallaController@getSettings');
                         $router->post('admin-settings', 'ValhallaController@saveAdminSettings');
                         $router->get('admin-settings', 'ValhallaController@getAdminSettings');
+                        $router->get('admin-hosted-status', 'ValhallaController@getAdminHostedStatus');
                     }
                 );
             }
