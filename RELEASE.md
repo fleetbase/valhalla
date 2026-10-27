@@ -10,7 +10,7 @@
 - **Security: organization hosts must be public addresses.** A host that points at loopback, a private network or cloud metadata is refused on save (422). If one was saved earlier, it is ignored at request time and the system server is used. `VALHALLA_ALLOW_PRIVATE_HOSTS=true` turns this off for installs that run Valhalla on their own network. (#10)
 - **Fleetbase Hosted Routing is the default server.** `https://valhalla.routing.fleetbase.io` replaces `valhalla1.openstreetmap.de`. A host set to the OpenStreetMap community servers, anywhere, now resolves to the default instead, because their usage policy does not allow production traffic. The hosted server needs a key: a free Community key (2,500 routes a day) or a paid tier, from Fleetbase Cloud at `/~/routing`, or minted at install by fleetbase/core-api#325. (#11)
 - **The map route control goes through the server.** It posts to `valhalla/int/v1/route`, so it uses the configured server and key. The key never reaches the browser. (#11)
-- **Plan and usage in Admin → Fleet-Ops → Routing.** When the host is Fleetbase Hosted Routing, the Valhalla panel shows the key's plan and today's usage, with Upgrade and Manage subscription links. It says when the key is missing, refused, over quota or back on the free tier. (#11)
+- **Plan and usage in Admin → Fleet-Ops → Routing.** When the host is Fleetbase Hosted Valhalla, the Valhalla panel shows one quiet line: the key's plan, today's usage, and Upgrade and Manage links. A second small line appears only when the key is missing, refused, over quota, back on the free tier or awaiting email confirmation. (#11)
 - **Release CI like Fleet-Ops.**
   - PRs into `release/v*` run the Ember and PHP CI.
   - The Ember CI lints.

@@ -26,7 +26,7 @@ export default class AdminValhallaSettingsComponent extends Component {
     @tracked hosted = null;
 
     /**
-     * Fleetbase Hosted Routing (routing.fleetbase.io) status for the saved host and key:
+     * Fleetbase Hosted Valhalla (routing.fleetbase.io) status for the saved host and key:
      * plan, limits and today's usage, plus links to get, upgrade or manage the key on Cloud.
      */
     get hostedSummary() {
@@ -41,7 +41,7 @@ export default class AdminValhallaSettingsComponent extends Component {
 
         return {
             plan,
-            usage: quota > 0 ? `${used} of ${quota.toLocaleString()} routes used today` : `${used} routes today, no daily limit`,
+            usage: quota > 0 ? `${used} / ${quota.toLocaleString()} routes today` : `${used} routes today`,
             fallback: Boolean(usage.fallback),
             isFree: ['routing_community', 'routing_unverified'].includes(usage.plan) || ['community', 'unverified'].includes(usage.tier),
         };
@@ -66,6 +66,23 @@ export default class AdminValhallaSettingsComponent extends Component {
         return `Confirm the email${to} to raise this key to 2,500 routes a day. Until then it has 500.`;
     }
 
+    get upgradeLabel() {
+        return this.isInstallKey || this.hostedSummary?.isFree ? 'Upgrade' : 'Change plan';
+    }
+
+    /** One line under the status: the most important thing to act on, if any. */
+    get hostedNotice() {
+        if (this.hostedMessage) {
+            return this.hostedMessage;
+        }
+
+        if (this.hostedSummary?.fallback) {
+            return 'Your paid plan ended, so this key now has the free Community limits.';
+        }
+
+        return this.emailNotice;
+    }
+
     get isHostedKeyMissing() {
         return this.hosted?.status === 'missing_key';
     }
@@ -73,13 +90,13 @@ export default class AdminValhallaSettingsComponent extends Component {
     get hostedMessage() {
         switch (this.hosted?.status) {
             case 'missing_key':
-                return 'Fleetbase Hosted Routing needs a license key. Get a free one (2,500 routes a day) on Fleetbase Cloud.';
+                return 'No key yet. Without one, routes, distances and ETAs fall back to straight-line estimates.';
             case 'invalid_key':
-                return 'Fleetbase Hosted Routing refused this key: it is wrong or was revoked. Routes, distances and ETAs fall back to straight-line estimates.';
+                return 'This key was refused (wrong or revoked). Routes, distances and ETAs fall back to straight-line estimates.';
             case 'unreachable':
-                return 'Fleetbase Hosted Routing could not be reached to check this key. Routing keeps working if the key is valid.';
+                return "Couldn't reach Fleetbase Hosted Valhalla to check this key. Routing keeps working if the key is valid.";
             case 'quota_reached':
-                return "Today's route quota is used up. Until 00:00 UTC, distances and ETAs fall back to straight-line estimates.";
+                return "Today's quota is used up. Until 00:00 UTC, distances and ETAs fall back to straight-line estimates.";
             default:
                 return null;
         }
