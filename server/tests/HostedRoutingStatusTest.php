@@ -13,6 +13,7 @@ use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class HostedRoutingStatusTest extends TestCase
@@ -48,9 +49,7 @@ class HostedRoutingStatusTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider hosts
-     */
+    #[DataProvider('hosts')]
     public function testRecognisesOnlyTheHostedService(string $host, bool $hosted): void
     {
         $this->assertSame($hosted, HostedRouting::isHostedHost($host));
@@ -126,9 +125,7 @@ class HostedRoutingStatusTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider unreachable
-     */
+    #[DataProvider('unreachable')]
     public function testReportsTheServiceAsUnreachable(\Closure $response): void
     {
         Http::fake(['*' => fn () => $response()]);
