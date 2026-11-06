@@ -9,6 +9,7 @@ use Fleetbase\Valhalla\Support\Authorization;
 use Fleetbase\Valhalla\Support\HostPolicy;
 use Fleetbase\Valhalla\Support\Utils;
 use Fleetbase\Valhalla\Support\Valhalla;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -57,9 +58,7 @@ class DefaultHostTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider publicHosts
-     */
+    #[DataProvider('publicHosts')]
     public function testRecognisesTheCommunityServers(?string $host, bool $public): void
     {
         $this->assertSame($public, Valhalla::isPublicHost($host));

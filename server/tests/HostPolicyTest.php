@@ -3,6 +3,7 @@
 namespace Fleetbase\Valhalla\Tests;
 
 use Fleetbase\Valhalla\Support\HostPolicy;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class HostPolicyTest extends TestCase
@@ -37,9 +38,7 @@ class HostPolicyTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider allowedUrls
-     */
+    #[DataProvider('allowedUrls')]
     public function testAllowsPublicHttpHosts(string $url): void
     {
         $this->assertNull(HostPolicy::violation($url));
@@ -73,9 +72,7 @@ class HostPolicyTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider rejectedUrls
-     */
+    #[DataProvider('rejectedUrls')]
     public function testRejectsHostsTheServerMustNotCall(string $url): void
     {
         $this->assertNotNull(HostPolicy::violation($url));
