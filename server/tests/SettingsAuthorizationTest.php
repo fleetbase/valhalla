@@ -11,6 +11,7 @@ use Fleetbase\Valhalla\Support\Utils;
 use Fleetbase\Valhalla\Support\Valhalla;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class SettingsAuthorizationTest extends TestCase
@@ -42,9 +43,7 @@ class SettingsAuthorizationTest extends TestCase
         return [['getAdminSettings'], ['saveAdminSettings']];
     }
 
-    /**
-     * @dataProvider adminMethods
-     */
+    #[DataProvider('adminMethods')]
     public function testAdminSettingsRefuseUsersWhoAreNotSystemAdministrators(string $method): void
     {
         $this->signInAs($this->user(), ['fleet-ops update routing-settings', 'fleet-ops view routing-settings']);
@@ -55,9 +54,7 @@ class SettingsAuthorizationTest extends TestCase
         $this->assertNull(Setting::lookup('valhalla'));
     }
 
-    /**
-     * @dataProvider adminMethods
-     */
+    #[DataProvider('adminMethods')]
     public function testAdminSettingsRefuseRequestsWithoutAUser(string $method): void
     {
         $this->signInAs(null);
@@ -99,9 +96,7 @@ class SettingsAuthorizationTest extends TestCase
         return ['missing' => ['missing'], 'null' => [null], 'empty' => [''], 'whitespace' => ['   ']];
     }
 
-    /**
-     * @dataProvider blankKeys
-     */
+    #[DataProvider('blankKeys')]
     public function testSavingAdminSettingsWithABlankKeyKeepsTheStoredKey(?string $submitted): void
     {
         $this->signInAs($this->user('admin'));
@@ -150,9 +145,7 @@ class SettingsAuthorizationTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider organizationPermissionCases
-     */
+    #[DataProvider('organizationPermissionCases')]
     public function testOrganizationSettingsRequireTheRoutingSettingsPermission(string $method, array $permissions, int $status): void
     {
         $this->signInAs($this->user(), $permissions);
@@ -203,9 +196,7 @@ class SettingsAuthorizationTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider blockedOrganizationHosts
-     */
+    #[DataProvider('blockedOrganizationHosts')]
     public function testSavingOrganizationSettingsRejectsHostsTheServerMustNotCall(string $host): void
     {
         $this->signInAs($this->user(), ['fleet-ops update routing-settings']);
