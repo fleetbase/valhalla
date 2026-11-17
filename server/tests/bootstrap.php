@@ -50,7 +50,12 @@ $app->instance('session', new Store('test', new ArraySessionHandler(10)));
 // HTTP client for HostedRouting; tests fake it with Http::fake().
 $app->instance(Illuminate\Http\Client\Factory::class, new Illuminate\Http\Client\Factory());
 
-$app->instance(ResponseFactory::class, new class {
+// Laravel 12 types response() as a ResponseFactory, so the stand-in extends the real one.
+$app->instance(ResponseFactory::class, new class extends Illuminate\Routing\ResponseFactory {
+    public function __construct()
+    {
+    }
+
     public function json($data = [], $status = 200, array $headers = [], $options = 0)
     {
         return new JsonResponse($data, $status, $headers, $options);
